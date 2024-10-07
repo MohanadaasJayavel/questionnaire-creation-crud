@@ -1,204 +1,214 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import "../styles/style.css"
 
 function AddQuestionForm() {
-    const navigate = useNavigate();
     const [questionText, setQuestionText] = useState('');
     const [questionType, setQuestionType] = useState('text');
     const [options, setOptions] = useState([{ text: '', isLinked: false, nestedQuestions: [] }]);
     const handleAddOption = () => {
         setOptions([...options, { text: '', isLinked: false, nestedQuestions: [] }]);
     };
-
     const handleRemoveOption = (index) => {
-        const newOptions = [...options];
-        newOptions.splice(index, 1);
-        setOptions(newOptions);
+        const updatedOptions = options.filter((_, i) => i !== index);
+        setOptions(updatedOptions);
     };
-
-    const handleOptionChange = (index, event) => {
-        const newOptions = [...options];
-        newOptions[index].text = event.target.value;
-        setOptions(newOptions);
+    const handleOptionChange = (index, value) => {
+        const updatedOptions = [...options];
+        updatedOptions[index].text = value;
+        setOptions(updatedOptions);
     };
-
     const handleIsLinkedChange = (index) => {
-        const newOptions = [...options];
-        newOptions[index].isLinked = !newOptions[index].isLinked;
-        setOptions(newOptions);
+        const updatedOptions = [...options];
+        updatedOptions[index].isLinked = !updatedOptions[index].isLinked;
+        if (!updatedOptions[index].isLinked) {
+            updatedOptions[index].nestedQuestions = [];
+        }
+        setOptions(updatedOptions);
     };
-
-    const handleAddNestedQuestion = (parentIndex, nestedQuestion) => {
-        const newOptions = [...options];
-        newOptions[parentIndex].nestedQuestions.push(nestedQuestion);
-        setOptions(newOptions);
+    const handleAddNestedQuestion = (optionIndex) => {
+        const updatedOptions = [...options];
+        updatedOptions[optionIndex].nestedQuestions.push({
+            questionText: '',
+            questionType: 'text',
+            options: [],
+        });
+        setOptions(updatedOptions);
     };
-
+    const handleNestedQuestionChange = (optionIndex, nestedIndex, key, value) => {
+        const updatedOptions = [...options];
+        updatedOptions[optionIndex].nestedQuestions[nestedIndex] = {
+            ...updatedOptions[optionIndex].nestedQuestions[nestedIndex],
+            [key]: value,
+        };
+        setOptions(updatedOptions);
+    };
     const handleSubmit = async (event) => {
         event.preventDefault();
-        const newQuestion = {
+
+        const payload = {
             questionText,
             questionType,
-            options: (questionType === 'radio' || questionType === 'dropdown') ? options : [],
+            options: questionType === 'radio' || questionType === 'dropdown' ? options : [],
         };
 
+        console.log('Payload to be sent:', JSON.stringify(payload, null, 2));
+
         try {
-            await fetch('http://localhost:5000/api/questions', {
+            const response = await fetch('http://localhost:5000/api/questions', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(newQuestion),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
             });
-            navigate('/');
+
+            if (response.ok) {
+                console.log('Question created successfully');
+            } else {
+                console.error('Failed to create question');
+            }
         } catch (error) {
             console.error('Error creating question:', error);
         }
     };
 
     return (
-        <form onSubmit={handleSubmit}>
-            <div>
+        <form onSubmit={handleSubmit} className="questionnaire-form">
+            <div className="form-row Questiontext-rows">
                 <label>Question Text:</label>
                 <input
-                    type="text"
+                    type="text" className='question-text-header'
                     value={questionText}
                     onChange={(e) => setQuestionText(e.target.value)}
                     required
                 />
             </div>
-            <div>
-                <label>Question Type:</label>
-                <select value={questionType} onChange={(e) => setQuestionType(e.target.value)}>
-                    <option value="text">Text</option>
-                    <option value="number">Number</option>
-                    <option value="radio">Radio</option>
-                    <option value="dropdown">Dropdown</option>
-                </select>
+            <div className='question-type-dropdown'>
+                <div className="form-row">
+                    <label>Question Type:</label>
+
+                    <select value={questionType} onChange={(e) => setQuestionType(e.target.value)}>
+                        <option value="text">Text</option>
+                        <option value="number">Number</option>
+                        <option value="radio">Radio</option>
+                        <option value="dropdown">Dropdown</option>
+                    </select>
+                </div>
+
             </div>
 
             {(questionType === 'radio' || questionType === 'dropdown') && (
                 <div>
-                    <label>Options:</label>
-                    {options.map((option, index) => (
-                        <div key={index} style={{ marginBottom: '10px' }}>
+                    <h4>Options:</h4>
+                    {options.map((option, optionIndex) => (
+                        <div key={optionIndex} className="option-container">
                             <input
-                                type="text"
+                                type="text" className='question-input-box'
                                 value={option.text}
-                                onChange={(e) => handleOptionChange(index, e)}
-                                placeholder="Option text"
+                                onChange={(e) => handleOptionChange(optionIndex, e.target.value)}
+                                placeholder="Option Text"
                             />
+
                             <label>
                                 <input
                                     type="checkbox"
                                     checked={option.isLinked}
-                                    onChange={() => handleIsLinkedChange(index)}
+                                    onChange={() => handleIsLinkedChange(optionIndex)}
                                 />
-                                Is Linked
+                                Add Nested Questions
                             </label>
-                            <button type="button" onClick={() => handleRemoveOption(index)}>Remove Option</button>
 
                             {option.isLinked && (
-                                <NestedQuestionForm
-                                    parentIndex={index}
-                                    nestedQuestions={option.nestedQuestions}
-                                    addNestedQuestion={handleAddNestedQuestion}
-                                />
+                                <div className="nested-questions">
+                                    {option.nestedQuestions.map((nestedQuestion, nestedIndex) => (
+                                        <div key={nestedIndex} className="nested-question">
+                                            <input
+                                                type="text"
+                                                value={nestedQuestion.questionText}
+                                                onChange={(e) =>
+                                                    handleNestedQuestionChange(optionIndex, nestedIndex, 'questionText', e.target.value)
+                                                }
+                                                placeholder="Nested Question Text"
+                                            />
+                                            <select
+                                                value={nestedQuestion.questionType}
+                                                onChange={(e) =>
+                                                    handleNestedQuestionChange(optionIndex, nestedIndex, 'questionType', e.target.value)
+                                                }
+                                            >
+                                                <option value="text">Text</option>
+                                                <option value="number">Number</option>
+                                                <option value="radio">Radio</option>
+                                                <option value="dropdown">Dropdown</option>
+                                            </select>
+
+                                            {(nestedQuestion.questionType === 'radio' ||
+                                                nestedQuestion.questionType === 'dropdown') && (
+                                                    <div>
+                                                        <h5>Nested Options:</h5>
+                                                        {nestedQuestion.options.map((nestedOption, optIndex) => (
+                                                            <div key={optIndex}>
+                                                                <input
+                                                                    type="text"
+                                                                    value={nestedOption.text}
+                                                                    onChange={(e) =>
+                                                                        handleNestedQuestionChange(
+                                                                            optionIndex,
+                                                                            nestedIndex,
+                                                                            'options',
+                                                                            nestedQuestion.options.map((opt, i) =>
+                                                                                i === optIndex
+                                                                                    ? { ...opt, text: e.target.value }
+                                                                                    : opt
+                                                                            )
+                                                                        )
+                                                                    }
+                                                                    placeholder="Nested Option Text"
+                                                                />
+                                                            </div>
+                                                        ))}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                handleNestedQuestionChange(
+                                                                    optionIndex,
+                                                                    nestedIndex,
+                                                                    'options',
+                                                                    [
+                                                                        ...nestedQuestion.options,
+                                                                        { text: '', isLinked: false, nestedQuestions: [] },
+                                                                    ]
+                                                                )
+                                                            }
+                                                        >
+                                                            Add Nested Option
+                                                        </button>
+                                                    </div>
+                                                )}
+                                        </div>
+                                    ))}
+                                    <button type="button" onClick={() => handleAddNestedQuestion(optionIndex)}>
+                                        Add Nested Question
+                                    </button>
+                                </div>
                             )}
+
+                            <button type="button" onClick={() => handleRemoveOption(optionIndex)}>
+                                Remove Option
+                            </button>
                         </div>
                     ))}
-                    <button type="button" onClick={handleAddOption}>Add Option</button>
+
+                    <button type="button" className="add-button" onClick={handleAddOption}>
+                        Add Option
+                    </button>
                 </div>
             )}
 
-            <button type="submit">Create Question</button>
+            <button type="submit" className="submit-button add-button">
+                Create Question
+            </button>
         </form>
     );
 }
-
-const NestedQuestionForm = ({ parentIndex, addNestedQuestion }) => {
-    const [nestedQuestionText, setNestedQuestionText] = useState('');
-    const [nestedQuestionType, setNestedQuestionType] = useState('text');
-    const [nestedOptions, setNestedOptions] = useState([{ text: '', isLinked: false, nestedQuestions: [] }]);
-
-    const handleAddNestedOption = () => {
-        setNestedOptions([...nestedOptions, { text: '', isLinked: false, nestedQuestions: [] }]);
-    };
-
-    const handleRemoveNestedOption = (index) => {
-        const newNestedOptions = [...nestedOptions];
-        newNestedOptions.splice(index, 1);
-        setNestedOptions(newNestedOptions);
-    };
-
-    const handleNestedOptionChange = (index, event) => {
-        const newNestedOptions = [...nestedOptions];
-        newNestedOptions[index].text = event.target.value;
-        setNestedOptions(newNestedOptions);
-    };
-
-    const handleNestedIsLinkedChange = (index) => {
-        const newNestedOptions = [...nestedOptions];
-        newNestedOptions[index].isLinked = !newNestedOptions[index].isLinked;
-        setNestedOptions(newNestedOptions);
-    };
-
-    const handleAddNestedQuestion = () => {
-        const nestedQuestion = {
-            questionText: nestedQuestionText,
-            questionType: nestedQuestionType,
-            options: (nestedQuestionType === 'radio' || nestedQuestionType === 'dropdown') ? nestedOptions : [],
-        };
-
-        addNestedQuestion(parentIndex, nestedQuestion);
-        setNestedQuestionText('');
-        setNestedOptions([{ text: '', isLinked: false, nestedQuestions: [] }]);
-    };
-
-    return (
-        <div style={{ marginLeft: '20px', marginTop: '10px' }}>
-            <h4>Nested Question</h4>
-            <input
-                type="text"
-                value={nestedQuestionText}
-                onChange={(e) => setNestedQuestionText(e.target.value)}
-                placeholder="Nested Question Text"
-            />
-            <select value={nestedQuestionType} onChange={(e) => setNestedQuestionType(e.target.value)}>
-                <option value="text">Text</option>
-                <option value="number">Number</option>
-                <option value="radio">Radio</option>
-                <option value="dropdown">Dropdown</option>
-            </select>
-
-            {(nestedQuestionType === 'radio' || nestedQuestionType === 'dropdown') && (
-                <div>
-                    <label>Nested Options:</label>
-                    {nestedOptions.map((nestedOption, index) => (
-                        <div key={index} style={{ marginBottom: '5px' }}>
-                            <input
-                                type="text"
-                                value={nestedOption.text}
-                                onChange={(e) => handleNestedOptionChange(index, e)}
-                                placeholder="Nested Option Text"
-                            />
-                            <label>
-                                <input
-                                    type="checkbox"
-                                    checked={nestedOption.isLinked}
-                                    onChange={() => handleNestedIsLinkedChange(index)}
-                                />
-                                Is Linked
-                            </label>
-                            <button type="button" onClick={() => handleRemoveNestedOption(index)}>Remove Nested Option</button>
-                        </div>
-                    ))}
-                    <button type="button" onClick={handleAddNestedOption}>Add Nested Option</button>
-                </div>
-            )}
-            <button type="button" onClick={handleAddNestedQuestion}>Add Nested Question</button>
-        </div>
-    );
-};
-
 export default AddQuestionForm;
+

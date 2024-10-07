@@ -7,7 +7,7 @@ function App() {
   return (
     <Router>
       <div>
-        <h1>Questionnaire Management</h1>
+        <h1 style={{ textAlign: 'center' }}>Questionnaire Management</h1>
         <Routes>
           <Route path="/" element={<QuestionList />} />
           <Route path="/add" element={<AddQuestionForm />} />
